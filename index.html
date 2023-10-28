@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notes App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            text-align: center;
+            background-color: #222;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            min-height: 90vh;
+        }
+
+        #headerContainer {
+            text-align: center;
+        }
+
+        #noteInput {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+            background-color: #444;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+        }
+
+        #noteList {
+            list-style-type: none;
+            padding: 0;
+            flex-grow: 1;
+        }
+
+        .noteItem {
+            margin-bottom: 5px;
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            background-color: #333;
+        }
+
+        .removeButton {
+            cursor: pointer;
+            background-color: #ff6666;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+        }
+
+        h1 {
+            color: #eee;
+        }
+
+        button {
+            background-color: #555;
+            color: #fff;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #777;
+        }
+
+        input[type="file"],
+        input[type="text"] {
+            background-color: #444;
+            color: #fff;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+
+        #importInput {
+            display: none;
+        }
+
+        .custom-file-upload {
+            border: 1px solid #555;
+            display: inline-block;
+            padding: 6px 12px;
+            cursor: pointer;
+            background-color: #555;
+            color: #fff;
+            border-radius: 5px;
+        }
+
+        .custom-file-upload:hover {
+            background-color: #777;
+        }
+
+        footer {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="headerContainer">
+        <h1>Simple Notes</h1>
+    </div>
+
+    <input type="text" id="noteInput" placeholder="Enter your note..." onkeydown="if (event.key === 'Enter') saveNote()">
+    <button onclick="saveNote()">Save Note</button>
+
+    <ul id="noteList"></ul>
+
+    <!-- Content above buttons -->
+
+    <footer>
+        <button onclick="confirmRemoveAllNotes()">Remove All Notes</button>
+        <button onclick="downloadNotes()">Download Notes</button>
+        <label for="importInput" class="custom-file-upload">Import Notes</label>
+        <input type="file" id="importInput" onchange="importNotes()">
+    </footer>
+
+    <script>
+        // Function to confirm before removing all notes
+        function confirmRemoveAllNotes() {
+            var confirmRemove = confirm("Are you sure you want to remove all notes?");
+            if (confirmRemove) {
+                removeAllNotes();
+            }
+        }
+
+        // Function to save a note
+        function saveNote() {
+            var noteInput = document.getElementById("noteInput");
+            var noteList = document.getElementById("noteList");
+
+            // Get the current list of notes
+            var notes = localStorage.getItem("notes") ? JSON.parse(localStorage.getItem("notes")) : [];
+
+            // Add the new note to the list
+            if (noteInput.value.trim() !== '') {
+                notes.push(noteInput.value);
+
+                // Save the updated list of notes to local storage
+                localStorage.setItem("notes", JSON.stringify(notes));
+
+                // Clear the input field
+                noteInput.value = "";
+
+                // Update the displayed list of notes
+                displayNotes();
+            }
+        }
+
+        // Function to remove a note
+        function removeNote(index) {
+            var notes = JSON.parse(localStorage.getItem("notes"));
+
+            // Remove the note at the specified index
+            notes.splice(index, 1);
+
+            // Save the updated list of notes to local storage
+            localStorage.setItem("notes", JSON.stringify(notes));
+
+            // Update the displayed list of notes
+            displayNotes();
+        }
+
+        // Function to remove all notes
+        function removeAllNotes() {
+            localStorage.removeItem("notes");
+            displayNotes();
+        }
+
+        // Function to display the list of notes
+        function displayNotes() {
+            var noteList = document.getElementById("noteList");
+
+            // Clear the current list
+            noteList.innerHTML = "";
+
+            // Get the list of notes from local storage
+            var notes = localStorage.getItem("notes") ? JSON.parse(localStorage.getItem("notes")) : [];
+
+            // Display each note in the list
+            notes.forEach(function (note, index) {
+                var li = document.createElement("li");
+                li.className = "noteItem";
+
+                var removeButton = document.createElement("button");
+                removeButton.className = "removeButton";
+                removeButton.textContent = "Remove";
+                removeButton.onclick = function () {
+                    removeNote(index);
+                };
+
+                li.textContent = note;
+                li.appendChild(removeButton);
+
+                noteList.appendChild(li);
+            });
+        }
+
+        // Function to download notes as a file
+        function downloadNotes() {
+            var notes = localStorage.getItem("notes") ? JSON.parse(localStorage.getItem("notes")) : [];
+            var notesText = notes.join('\n');
+
+            var blob = new Blob([notesText], { type: "text/plain" });
+            var url = URL.createObjectURL(blob);
+
+            var a = document.createElement("a");
+            a.href = url;
+            a.download = "notes.txt";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            // Revoke the Object URL to free up resources
+            URL.revokeObjectURL(url);
+        }
+
+        // Function to import notes from a file
+        function importNotes() {
+            var importInput = document.getElementById("importInput");
+
+            var file = importInput.files[0];
+            if (!file) return;
+
+            var reader = new FileReader();
+
+            reader.onload = function (e) {
+                var importedNotes = e.target.result.split('\n');
+                var existingNotes = localStorage.getItem("notes") ? JSON.parse(localStorage.getItem("notes")) : [];
+                var allNotes = existingNotes.concat(importedNotes.filter(note => note.trim() !== ''));
+
+                localStorage.setItem("notes", JSON.stringify(allNotes));
+                displayNotes();
+            };
+
+            reader.readAsText(file);
+            importInput.value = ''; // Clear the input to allow importing the same file again
+        }
+
+        // Display the initial list of notes when the page loads
+        displayNotes();
+    </script>
+
+</body>
+</html>
